@@ -1,40 +1,67 @@
-import nltk
-from nltk.corpus import indian
-from nltk.tag import tnt
-import string
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 
-nltk.download('punkt')
-nltk.download()
+data_set=pd.read_csv('salary.csv')
+X=data_set.iloc[:,[2,3]].values    #IV
+y=data_set.iloc[:,4].values   #DV
 
-tagged_set = 'hindi.pos'
-word_set = indian.sents(tagged_set)
-count = 0
-for sen in word_set:
-    count = count + 1
-    sen = "".join([" "+i if not i.startswith("'") and i not in string.punctuation else i for i in sen]).strip()
-    print (sen)
-print (count)
+#Splitting data
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test=train_test_split(X,y,test_size=0.25,random_state=0)
 
-train_perc = .9
-
-train_rows = int(train_perc*count)
-test_rows = train_rows + 1
-
-print (train_rows, test_rows)
-
-data = indian.tagged_sents(tagged_set)
-train_data = data[:train_rows]
-test_data = data[test_rows:]
+#feature scaling
+from sklearn.preprocessing import StandardScaler
+scaler=StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
 
-pos_tagger = tnt.TnT()
-pos_tagger.train(train_data)
-pos_tagger.evaluate(test_data)
+#fitting Classifier to te Training set
+from sklearn.tree import DecisionTreeClassifier
+classifier = DecisionTreeClassifier(criterion='entropy',random_state=0)
+classifier.fit(X_train,y_train)
+#predicting the test set result
+y_pred= classifier.predict(X_test)
 
-word_to_be_tagged = u"३९ गेंदों में दो चौकों और एक छक्के की मदद से ३४ रन बनाने वाले परोरे अंत तक आउट नहीं हुए ।"
+#making confusion matrix
+from sklearn.metrics import confusion_matrix,classification_report
+cm=confusion_matrix(y_test,y_pred)
+print(classification_report(y_test,y_pred))
 
-tokenized = nltk.word_tokenize(word_to_be_tagged)
+#Visualizing the training set result
+from matplotlib.colors import ListedColormap
+X_set,y_set = X_train,y_train
+X1,X2=np.meshgrid(np.arange(start=X_set[:,0].min()-1,stop=X_set[:,0].max()+1,step=0.01),np.arange(start=X_set[:,1].min()-1,stop=X_set[:,1].max()+1,step=0.01))
+plt.contourf(X1,X2,classifier.predict(np.array([X1.ravel(),X2.ravel()]).T).reshape(X1.shape),alpha=0.75,cmap=ListedColormap(('red','green')))
+plt.xlim(X1.min(),X1.max())
+plt.ylim(X2.min(),X2.max())
+
+for i,j in  enumerate(np.unique(y_set)):
+    plt.scatter(X_set[y_set == j,0],X_set[y_set== j, 1],c=ListedColormap(('red','green'))(i),label=j)
+
+plt.title('Decision Tree Classifier(Train set)')
+plt.xlabel('Age')
+plt.ylabel('Estimated Salary')
+plt.legend()
+plt.show()
+
+#Visualizing the test result
 
 
-print(pos_tagger.tag(tokenized))
+
+X_set,y_set = X_test,y_test
+X1,X2 = np.meshgrid(np.arange(start=X_set[:, 0].min() - 1,stop=X_set[:, 0].max() + 1,step=0.01),np.arange(start=X_set[:, 1].min() - 1,stop=X_set[:, 1].max() + 1,step=0.01))
+plt.contourf(X1,X2,classifier.predict(np.array([X1.ravel(),X2.ravel()]).T).reshape(X1.shape),alpha=0.75,cmap=ListedColormap(('red', 'green')))
+plt.xlim(X1.min(), X1.max())
+plt.ylim(X2.min(), X2.max())
+
+for i, j in enumerate(np.unique(y_set)):
+    plt.scatter(X_set[y_set == j,0],X_set[y_set == j,1],c=ListedColormap(('red','green'))(i),label=j)
+
+plt.title('Decision Tree Classifier(Test set)')
+plt.xlabel('Age')
+plt.ylabel('Estimated Salary')
+plt.legend()
+plt.show()
